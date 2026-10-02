@@ -159,7 +159,7 @@
         .nav-item svg { width: 24px; height: 24px; stroke: currentColor; fill: none; stroke-width: 2; }
         .nav-item.active { color: var(--primary-green); font-weight: bold; }
 
-        .nav-add-btn { background: var(--card-bg); border: 2px solid var(--primary-orange); color: var(--primary-orange); border-radius: 50%; width: 56px; height: 56px; display: flex; align-items: center; justify-content: center; margin-top: -30px; font-size: 2rem; box-shadow: 0 4px 10px rgba(0,0,0,0.1); cursor: pointer; flex-shrink: 0; padding: 0; line-height: 1; }
+        .nav-add-btn { background: var(--card-bg); border: 2px solid var(--primary-orange); color: var(--primary-orange); border-radius: 50%; width: 56px; height: 56px; display: flex; align-items: center; justify-content: center; margin-top: -6px; font-size: 2rem; box-shadow: 0 4px 10px rgba(0,0,0,0.1); cursor: pointer; flex-shrink: 0; padding: 0; line-height: 1; }
         .nav-badge-wrapper { position: relative; }
         .nav-badge { position: absolute; top: -4px; right: -8px; background: var(--error-red); color: white; font-size: 0.6rem; border-radius: 10px; padding: 2px 5px; min-width: 8px; text-align: center; }
 
@@ -324,6 +324,15 @@
     .gear-btn { background: none; border: none; color: var(--text-color); width: 40px; margin: 0; padding: 0; justify-self: end; cursor: pointer; }
         #chat-anexar { background: transparent; color: var(--primary-green); border: 1px solid var(--input-border); }
         .chat-img { max-width: 100%; max-height: 260px; border-radius: 12px; display: block; margin-bottom: 4px; }
+    .mapa-busca { position: relative; z-index: 600; padding: 0 24px 12px; }
+        .mapa-resultados { position: absolute; left: 24px; right: 24px; top: 100%; margin-top: -6px; background: var(--card-bg); border: 1px solid var(--input-border); border-radius: 14px; box-shadow: 0 6px 20px rgba(0,0,0,.2); max-height: 260px; overflow-y: auto; }
+        .mapa-res-item { padding: 10px 14px; border-bottom: 1px solid var(--input-border); cursor: pointer; font-size: 0.9rem; }
+        .mapa-res-item:last-child { border-bottom: none; }
+        .mapa-res-item small { display: block; color: var(--text-muted); font-size: 0.75rem; }
+    .pet-pin { width: 44px; height: 44px; border-radius: 50%; border: 3px solid #7E57C2; background: #fff; box-shadow: 0 3px 10px rgba(0,0,0,.3); overflow: hidden; }
+        .pet-pin img { width: 100%; height: 100%; object-fit: cover; display: block; }
+    .lg-item { cursor: pointer; user-select: none; -webkit-user-select: none; padding: 3px 0; transition: opacity .2s; }
+        .lg-item.off { opacity: .35; text-decoration: line-through; }
     </style>
 </head>
 <body>
@@ -816,13 +825,21 @@
                 <img data-logo="head" class="logo-img" alt="Helpet">
                 <img src="https://placehold.co/100x100/EEE/999?text=M" alt="Avatar" class="user-avatar">
             </div>
+            <div class="mapa-busca">
+                <div class="search-box" style="margin-bottom:0;">
+                    <svg viewBox="0 0 24 24" width="18" height="18" stroke="currentColor" stroke-width="2" fill="none"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+                    <input type="text" id="mapa-busca-input" placeholder="Buscar rua ou endereço" autocomplete="off">
+                </div>
+                <div id="mapa-resultados" class="mapa-resultados hidden"></div>
+            </div>
             <div class="mapa-wrap">
                 <div id="mapa"></div>
                 <div class="mapa-legenda">
-                    <small>LEGENDA</small>
-                    <div><span class="lg-dot" style="background:#20B2AA"></span> Cheio</div>
-                    <div><span class="lg-dot" style="background:#FF8C00"></span> Razoável</div>
-                    <div><span class="lg-dot" style="background:#E53935"></span> Vazio</div>
+                    <small>FILTRAR</small>
+                    <div class="lg-item" onclick="alternarFiltroMapa('cheio', this)"><span class="lg-dot" style="background:#20B2AA"></span> Cheio</div>
+                    <div class="lg-item" onclick="alternarFiltroMapa('razoavel', this)"><span class="lg-dot" style="background:#FF8C00"></span> Razoável</div>
+                    <div class="lg-item" onclick="alternarFiltroMapa('vazio', this)"><span class="lg-dot" style="background:#E53935"></span> Vazio</div>
+                    <div class="lg-item" onclick="alternarFiltroMapa('pets', this)"><span class="lg-dot" style="background:#7E57C2"></span> Pet p/ adoção</div>
                 </div>
                 <button class="mapa-btn" onclick="localizarMe()" aria-label="Minha localização">➤</button>
                 <div id="mapa-aviso" class="mapa-aviso hidden">Modo ADM: toque no mapa para adicionar um bebedouro ou em um pin para editar.</div>
@@ -1436,6 +1453,7 @@
                 snap.docs.forEach(d => pets.set(d.id, d.data()));
                 petsProntos = true;
                 renderPetsHome();
+                desenharPets();
                 sincronizarTelasAbertas();
             },
             (e) => {
@@ -2688,26 +2706,41 @@
     const STATUS_BB = { cheio: 'Cheio', razoavel: 'Razoável', vazio: 'Vazio' };
     const PAW = '<svg viewBox="0 0 24 24" width="22" height="22" fill="currentColor"><ellipse cx="12" cy="16" rx="5" ry="4"/><circle cx="5.5" cy="10.5" r="2"/><circle cx="9.5" cy="6" r="2"/><circle cx="14.5" cy="6" r="2"/><circle cx="18.5" cy="10.5" r="2"/></svg>';
 
-    let mapa = null, camadaBB = null, unsubBB = null, meuPonto = null;
+    let mapa = null, camadaBB = null, camadaPets = null, unsubBB = null, meuPonto = null;
     let jaLocalizou = false, pediuLocal = false;
     let bbEditando = null, bbLatLng = null;
     const bebedouros = new Map();
+
+    const filtroMapa = { cheio: true, razoavel: true, vazio: true, pets: true };
+    window.alternarFiltroMapa = function (chave, el) {
+        filtroMapa[chave] = !filtroMapa[chave];
+        if (el) el.classList.toggle('off', !filtroMapa[chave]);
+        desenharBB();
+    };
 
     function iniciarMapa() {
         if (mapa) return;
         if (typeof L === 'undefined') { alert("Não foi possível carregar o mapa. Verifique sua conexão."); return; }
         mapa = L.map('mapa', { zoomControl: false }).setView([-23.55, -46.63], 13);
-        L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
-            maxZoom: 19, subdomains: 'abcd', attribution: '© OpenStreetMap · © CARTO'
+        L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}', {
+            maxZoom: 19, attribution: 'Tiles © Esri — © OpenStreetMap contributors'
         }).addTo(mapa);
         camadaBB = L.layerGroup().addTo(mapa);
+        camadaPets = L.layerGroup().addTo(mapa);
         mapa.on('click', (e) => { if (ehAdmin()) abrirModalBB(null, e.latlng); });
         mapa.on('locationfound', (e) => {
             if (meuPonto) meuPonto.remove();
             meuPonto = L.circleMarker(e.latlng, { radius: 8, color: '#fff', weight: 3, fillColor: '#2979FF', fillOpacity: 1 }).addTo(mapa);
         });
-        mapa.on('locationerror', () => {
-            if (pediuLocal) alert("Não foi possível pegar sua localização. Permita o acesso ao GPS no navegador.");
+        mapa.on('locationerror', (e) => {
+            if (pediuLocal) {
+                let msg = "Não foi possível pegar sua localização.";
+                if (!window.isSecureContext) msg = "A localização só funciona em HTTPS ou localhost. Publique o app (ex.: Firebase Hosting) ou rode em um servidor local.";
+                else if (e.code === 1) msg = "Permissão negada. Libere a localização nas configurações do site/navegador.";
+                else if (e.code === 2) msg = "Posição indisponível. Verifique se o GPS está ligado.";
+                else if (e.code === 3) msg = "Tempo esgotado ao buscar sua posição. Tente de novo.";
+                alert(msg);
+            }
             pediuLocal = false;
         });
         desenharBB();
@@ -2716,9 +2749,11 @@
     function desenharBB() {
         if (!mapa || !camadaBB) return;
         camadaBB.clearLayers();
+        desenharPets();
         const admin = ehAdmin();
         bebedouros.forEach((b, id) => {
             const st = STATUS_BB[b.status] ? b.status : 'vazio';
+            if (!filtroMapa[st]) return;
             const icone = L.divIcon({ className: '', html: `<div class="bb-pin ${st}">${PAW}</div>`, iconSize: [40, 40], iconAnchor: [20, 20] });
             const m = L.marker([b.lat, b.lng], { icon: icone }).addTo(camadaBB);
             if (admin) {
@@ -2728,6 +2763,44 @@
                 m.bindPopup(`<strong>${escapeHtml(b.nome)}</strong><br>Nível: ${STATUS_BB[st]}${t ? '<br><small>Atualizado ' + t + '</small>' : ''}`);
             }
         });
+    }
+
+    // ---------- PETS PARA ADOÇÃO NO MAPA ----------
+    // O endereço do pet é só o texto "Onde o pet está?" (bairro/cidade). Convertemos em coordenadas
+    // aproximadas (com guardado no aparelho) e espalhamos um pouco os pins para não ficarem empilhados.
+    const geoCache = (() => { try { return JSON.parse(localStorage.getItem('helpet_geo') || '{}'); } catch (e) { return {}; } })();
+    let petsDesenho = 0;
+    async function coordenadasDoLocal(local) {
+        const chave = String(local || '').trim().toLowerCase();
+        if (!chave || chave.startsWith('localização não informada')) return null;
+        if (chave in geoCache) return geoCache[chave];
+        let pos = null;
+        try {
+            const r = await geocodificar(local);
+            if (r && r[0]) pos = { lat: r[0].lat, lng: r[0].lng };
+        } catch (e) { return null; }   // falha de rede: tenta de novo na próxima vez
+        geoCache[chave] = pos;
+        try { localStorage.setItem('helpet_geo', JSON.stringify(geoCache)); } catch (e) {}
+        return pos;
+    }
+    async function desenharPets() {
+        if (!mapa || !camadaPets) return;
+        const vez = ++petsDesenho;
+        camadaPets.clearLayers();
+        if (!filtroMapa.pets) return;
+        for (const [id, p] of [...pets]) {
+            const base = await coordenadasDoLocal(p.local);
+            if (vez !== petsDesenho) return;      // chegou uma atualização mais nova
+            if (!base) continue;
+            let h = 0;
+            for (const ch of id) h = (h * 31 + ch.charCodeAt(0)) >>> 0;
+            const ang = (h % 360) * Math.PI / 180, raio = 0.001 + (((h >>> 8) % 100) / 100) * 0.003;
+            const lat = base.lat + Math.sin(ang) * raio, lng = base.lng + Math.cos(ang) * raio;
+            const icone = L.divIcon({ className: '', html: `<div class="pet-pin"><img src="${escapeHtml(p.imagem)}" alt=""></div>`, iconSize: [44, 44], iconAnchor: [22, 22] });
+            L.marker([lat, lng], { icon: icone }).addTo(camadaPets).bindPopup(
+                `<strong>${escapeHtml(p.nome)}</strong><br>${escapeHtml(p.local || '')}<br><a href="#" onclick="abrirPet('${id}'); return false;" style="color:#20B2AA; font-weight:bold;">Ver pet</a>`
+            );
+        }
     }
 
     function iniciarListenerBebedouros() {
@@ -2747,14 +2820,14 @@
             if (!mapa) return;
             mapa.invalidateSize();
             desenharBB();
-            if (!jaLocalizou) { jaLocalizou = true; mapa.locate({ setView: true, maxZoom: 16 }); }
+            if (!jaLocalizou) { jaLocalizou = true; mapa.locate({ setView: true, maxZoom: 16, enableHighAccuracy: true, timeout: 10000 }); }
         }, 150);
     };
 
     window.localizarMe = function () {
         if (!mapa) return;
         pediuLocal = true;
-        mapa.locate({ setView: true, maxZoom: 17 });
+        mapa.locate({ setView: true, maxZoom: 17, enableHighAccuracy: true, timeout: 10000 });
     };
 
     window.abrirModalBB = function (id, latlng) {
@@ -2915,6 +2988,62 @@
         const inp = $('input-pet-local');
         if (inp && local && !inp.value) inp.value = local;
     }
+
+    // ---------- BUSCA DE RUA NO MAPA ----------
+    let buscaMapaTimer = null, marcadorBusca = null, resultadosMapa = [];
+    async function geocodificar(q) {
+        const c = mapa ? mapa.getCenter() : { lat: -23.55, lng: -46.63 };
+        try {
+            const r = await fetch(`https://photon.komoot.io/api/?q=${encodeURIComponent(q)}&limit=6&lat=${c.lat}&lon=${c.lng}`);
+            if (!r.ok) throw new Error(r.status);
+            const j = await r.json();
+            return (j.features || []).map(f => {
+                const pr = f.properties || {};
+                const nome = [pr.name || pr.street, pr.housenumber].filter(Boolean).join(', ');
+                const resto = [pr.district || pr.suburb, pr.city || pr.town, pr.state].filter(Boolean).join(', ');
+                return { titulo: nome || resto, sub: nome ? resto : '', lat: f.geometry.coordinates[1], lng: f.geometry.coordinates[0] };
+            }).filter(i => i.titulo);
+        } catch (e) {
+            const r = await fetch(`https://nominatim.openstreetmap.org/search?format=jsonv2&limit=6&q=${encodeURIComponent(q)}`);
+            const j = await r.json();
+            return j.map(x => {
+                const partes = x.display_name.split(',');
+                return { titulo: partes.slice(0, 2).join(','), sub: partes.slice(2, 4).join(','), lat: +x.lat, lng: +x.lon };
+            });
+        }
+    }
+    async function buscarNoMapa() {
+        const q = $('mapa-busca-input').value.trim();
+        const box = $('mapa-resultados');
+        if (q.length < 3) { box.classList.add('hidden'); return; }
+        box.innerHTML = '<div class="mapa-res-item">Buscando…</div>';
+        box.classList.remove('hidden');
+        try {
+            resultadosMapa = await geocodificar(q);
+            box.innerHTML = resultadosMapa.length
+                ? resultadosMapa.map((i, n) => `<div class="mapa-res-item" onclick="escolherBuscaMapa(${n})">${escapeHtml(i.titulo)}<small>${escapeHtml(i.sub)}</small></div>`).join('')
+                : '<div class="mapa-res-item">Nenhum resultado.</div>';
+        } catch (e) {
+            console.warn("Busca de endereço:", e);
+            box.innerHTML = '<div class="mapa-res-item">Busca indisponível no momento.</div>';
+        }
+    }
+    window.escolherBuscaMapa = function (n) {
+        const i = resultadosMapa[n];
+        if (!i) return;
+        iniciarMapa();
+        if (!mapa) return;
+        mapa.setView([i.lat, i.lng], 17);
+        if (marcadorBusca) marcadorBusca.remove();
+        marcadorBusca = L.circleMarker([i.lat, i.lng], { radius: 9, color: '#fff', weight: 3, fillColor: '#FF8C00', fillOpacity: 1 }).addTo(mapa).bindPopup(escapeHtml(i.titulo)).openPopup();
+        $('mapa-busca-input').value = i.titulo;
+        $('mapa-resultados').classList.add('hidden');
+    };
+    $('mapa-busca-input').addEventListener('input', () => { clearTimeout(buscaMapaTimer); buscaMapaTimer = setTimeout(buscarNoMapa, 450); });
+    $('mapa-busca-input').addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') { e.preventDefault(); clearTimeout(buscaMapaTimer); buscarNoMapa().then(() => { if (resultadosMapa.length) window.escolherBuscaMapa(0); }); }
+    });
+    document.addEventListener('click', (e) => { if (!e.target.closest('.mapa-busca')) $('mapa-resultados').classList.add('hidden'); });
 
     // ---------- LOGIN / CADASTRO ----------
     onAuthStateChanged(auth, (user) => {
