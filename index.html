@@ -45,7 +45,7 @@
             --light-green-bg: #111111;
         }
 
-        body.blue-light { filter: sepia(0.2) hue-rotate(-10deg); }
+        body.blue-light::after { content: ''; position: fixed; inset: 0; background: rgba(255,140,0,.12); mix-blend-mode: multiply; pointer-events: none; z-index: 999; }
 
         html { font-size: var(--font-scale); }
 
@@ -88,7 +88,7 @@
 
         .user-avatar { width: 40px; height: 40px; border-radius: 50%; background-color: #ddd; object-fit: cover; }
         .notification-icon { position: relative; color: var(--text-color); margin-right: 15px; cursor: pointer; }
-        .notification-badge { position: absolute; top: -2px; right: -2px; background: var(--error-red); width: 8px; height: 8px; border-radius: 50%; }
+        .notification-badge { position: absolute; top: -7px; right: -9px; background: var(--error-red); color: #fff; font-size: 0.65rem; font-weight: bold; min-width: 16px; height: 16px; padding: 0 4px; box-sizing: border-box; border-radius: 10px; display: flex; align-items: center; justify-content: center; line-height: 1; }
 
         .search-box { background-color: #F5F5F5; border-radius: 20px; padding: 12px 20px; display: flex; align-items: center; color: var(--text-muted); margin-bottom: 20px; }
         body.dark-mode .search-box { background-color: #2A2A2A; }
@@ -153,7 +153,7 @@
         .password-reqs li.valid { color: var(--success-green); }
         .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
 
-        .bottom-nav { position: absolute; bottom: 0; width: 100%; background-color: var(--card-bg); border-top: 1px solid var(--input-border); display: flex; justify-content: space-around; align-items: center; padding: 8px 0 15px 0; z-index: 10; box-sizing: border-box; }
+        .bottom-nav { position: fixed; bottom: 0; left: 50%; transform: translateX(-50%); width: 100%; max-width: 480px; background-color: var(--card-bg); border-top: 1px solid var(--input-border); display: grid; grid-template-columns: repeat(5, 1fr); justify-items: center; align-items: center; padding: 8px 0 15px 0; z-index: 50; box-sizing: border-box; }
         body.in-chat .bottom-nav { display: none; }
         .nav-item { background: none; border: none; color: var(--text-muted); font-size: 0.75rem; display: flex; flex-direction: column; align-items: center; gap: 4px; width: auto; margin: 0; padding: 5px; text-decoration: none; cursor: pointer; }
         .nav-item svg { width: 24px; height: 24px; stroke: currentColor; fill: none; stroke-width: 2; }
@@ -321,6 +321,9 @@
         .bb-pin { width: 40px; height: 40px; border-radius: 50%; background: #fff; border: 3px solid currentColor; box-shadow: 0 3px 10px rgba(0,0,0,.3); display: flex; align-items: center; justify-content: center; }
         .bb-pin.cheio { color: #20B2AA; } .bb-pin.razoavel { color: #FF8C00; } .bb-pin.vazio { color: #E53935; }
         #modal-bb select.form-control { padding-left: 14px; }
+    .gear-btn { background: none; border: none; color: var(--text-color); width: 40px; margin: 0; padding: 0; justify-self: end; cursor: pointer; }
+        #chat-anexar { background: transparent; color: var(--primary-green); border: 1px solid var(--input-border); }
+        .chat-img { max-width: 100%; max-height: 260px; border-radius: 12px; display: block; margin-bottom: 4px; }
     </style>
 </head>
 <body>
@@ -404,6 +407,7 @@
         </div>
         <div class="form-group">
             <label for="reg-rua">Endereço</label>
+            <input type="hidden" id="reg-cidade"><input type="hidden" id="reg-uf">
             <div class="input-wrapper"><span class="icon">🏠</span><input type="text" id="reg-rua" placeholder="Nome da Rua / Avenida"></div>
         </div>
         <div class="grid-2">
@@ -452,7 +456,7 @@
             <div class="top-bar-custom" style="justify-content: space-between; margin-bottom: 25px;">
                 <img data-logo="head" class="logo-img" alt="Helpet">
                 <div style="display: flex; align-items: center;">
-                    <div class="notification-icon" onclick="abrirListaChats()" role="button" aria-label="Abrir conversas">
+                    <div class="notification-icon" onclick="abrirNotificacoes()" role="button" aria-label="Abrir notificações">
                         <svg viewBox="0 0 24 24" width="22" height="22" stroke="currentColor" stroke-width="2" fill="none"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path><path d="M13.73 21a2 2 0 0 1-3.46 0"></path></svg>
                         <div class="notification-badge hidden" id="notif-badge"></div>
                     </div>
@@ -462,7 +466,7 @@
 
             <div class="search-box">
                 <svg viewBox="0 0 24 24" width="18" height="18" stroke="currentColor" stroke-width="2" fill="none"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
-                <input type="text" placeholder="Buscar campanhas ou animais">
+                <input type="text" id="busca-global" placeholder="Buscar campanhas, animais ou pessoas" autocomplete="off">
             </div>
 
             <div class="tabs" style="margin-top: 10px;">
@@ -470,12 +474,13 @@
                 <div class="tab" id="tab-btn-campanhas" onclick="mudarAbaHome('campanhas')">CAMPANHAS DE ARRECADAÇÃO</div>
             </div>
 
+            <div id="busca-pessoas" class="hidden"></div>
             <div id="conteudo-pets">
                 <div class="welcome-card">
                     <div class="welcome-icon">🐾</div>
                     <div>
                         <h3 id="ola-usuario">Olá!</h3>
-                        <p id="resumo-mes">Bem-vindo(a) ao Helpet! 🐾</p>
+                        <p id="resumo-mes">Bem-vindo(a) ao Helpet!</p>
                     </div>
                 </div>
                 <div id="lista-pets"><p class="text-center" style="color:var(--text-muted);">Carregando pets...</p></div>
@@ -484,6 +489,17 @@
             <div id="conteudo-campanhas" class="hidden">
                 <p class="text-center" style="color: var(--text-muted);">Carregando campanhas...</p>
             </div>
+        </div>
+
+        <!-- Tela: Notificações -->
+        <div id="app-notificacoes" class="screen screen-with-nav logged-screen hidden">
+            <div class="top-bar-grid">
+                <button class="back-btn" onclick="navegarApp('app-home', document.querySelector('.nav-item'))" aria-label="Voltar">←</button>
+                <h2>Notificações</h2>
+                <span></span>
+            </div>
+            <div id="notif-lista"></div>
+            <button id="notif-marcar" class="btn-outline hidden" onclick="marcarTodasNotifs()" style="justify-content:center;">Marcar todas como lidas</button>
         </div>
 
         <!-- Tela: Lista de conversas -->
@@ -508,6 +524,8 @@
                 </div>
                 <div class="chat-msgs" id="chat-msgs"></div>
                 <div class="chat-input">
+                    <button id="chat-anexar" type="button" aria-label="Enviar foto"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg></button>
+                    <input type="file" id="chat-arquivo" accept="image/*" style="display:none">
                     <input type="text" id="chat-input" placeholder="Digite uma mensagem" maxlength="1000" autocomplete="off">
                     <button id="chat-enviar" aria-label="Enviar mensagem">
                         <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"></line><polygon points="22 2 15 22 11 13 2 9 22 2"></polygon></svg>
@@ -585,7 +603,7 @@
                 <input type="text" id="input-pet-local" class="form-control no-icon" placeholder="📍 Sua cidade, Bairro...">
             </div>
 
-            <button id="btn-publicar-adocao" class="btn-primary" onclick="publicarAdocao()" style="margin-top: auto;">✨ Publicar Adoção</button>
+            <button id="btn-publicar-adocao" class="btn-primary" onclick="publicarAdocao()" style="margin-top: auto;">Publicar Adoção</button>
             <p class="text-center" style="font-size: 0.75rem; color: var(--text-muted); margin-top: 15px;">Ao publicar, você concorda com nossos <a class="link-notion" onclick="abrirTermos('adocao')">termos de adoção responsável</a>.</p>
         </div>
 
@@ -651,7 +669,7 @@
                 </div>
             </div>
 
-            <button id="btn-criar-campanha" class="btn-primary" onclick="publicarCampanha()" style="margin-top: 25px; background-color: var(--primary-green);">⊕ Criar Campanha agora</button>
+            <button id="btn-criar-campanha" class="btn-primary" onclick="publicarCampanha()" style="margin-top: 25px; background-color: var(--primary-green);">Criar Campanha agora</button>
         </div>
 
         <!-- Tela: Detalhe do Pet -->
@@ -725,8 +743,10 @@
 
         <!-- Tela: Configurações / Acessibilidade -->
         <div id="app-settings" class="screen screen-with-nav logged-screen hidden">
-            <div class="top-bar-custom">
+            <div class="top-bar-grid">
+                <button class="back-btn" onclick="abrirPerfil()" aria-label="Voltar">←</button>
                 <h2>Configurações</h2>
+                <span></span>
             </div>
 
             <div style="background:var(--light-green-bg); border-radius:16px; padding:16px; margin-bottom:20px; display:flex; gap:15px; align-items:flex-start;">
@@ -779,7 +799,7 @@
             </div>
 
             <div style="display:flex; gap:10px; margin-bottom:10px;">
-                <button class="btn-outline" onclick="restaurarPadroesAcessibilidade()" style="flex:1; justify-content:center; border-color:var(--primary-green); color:var(--primary-green); margin-top:0;">🔄 Restaurar Padrão</button>
+                <button class="btn-outline" onclick="restaurarPadroesAcessibilidade()" style="flex:1; justify-content:center; border-color:var(--primary-green); color:var(--primary-green); margin-top:0;">Restaurar Padrão</button>
             </div>
             <p class="text-center" style="font-size:0.8rem; margin:10px 0;">
                 <a class="link-notion" onclick="abrirTermos('uso')">Termos de Uso</a> ·
@@ -814,7 +834,7 @@
             <div class="top-bar-grid">
                 <button class="back-btn" onclick="voltarDoPerfil()" aria-label="Voltar">←</button>
                 <h2 id="pf-titulo-tela">Meu perfil</h2>
-                <img data-logo="head" class="logo-img logo-right" alt="Helpet">
+                <button id="pf-btn-config" class="gear-btn" onclick="navegarApp('app-settings', null)" aria-label="Configurações"><svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg></button>
             </div>
 
             <div class="pf-topo">
@@ -877,9 +897,9 @@
                 <svg viewBox="0 0 24 24"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path><circle cx="12" cy="10" r="3"></circle></svg>
                 Mapa
             </button>
-            <button class="nav-item" onclick="navegarApp('app-settings', this)">
-                <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
-                Ajustes
+            <button class="nav-item" id="nav-perfil" onclick="abrirPerfil()">
+                <svg viewBox="0 0 24 24"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
+                Perfil
             </button>
         </nav>
     </div>
@@ -1005,6 +1025,14 @@
     }
 
     function navegarApp(idTela, btnRef) {
+        navegarAppBase(idTela, btnRef);
+        if (idTela === 'app-notificacoes') document.querySelectorAll('.nav-item').forEach(b => b.classList.remove('active'));
+        if (idTela === 'app-perfil' || idTela === 'app-settings') {
+            document.querySelectorAll('.nav-item').forEach(b => b.classList.remove('active'));
+            const np = document.getElementById('nav-perfil'); if (np) np.classList.add('active');
+        }
+    }
+    function navegarAppBase(idTela, btnRef) {
         document.querySelectorAll('.logged-screen').forEach(el => el.classList.add('hidden'));
         document.getElementById(idTela).classList.remove('hidden');
         document.body.classList.toggle('in-chat', idTela === 'app-chat-room');
@@ -1224,6 +1252,8 @@
                 if (!data.erro) {
                     document.getElementById('reg-rua').value = data.logradouro;
                     document.getElementById('reg-bairro').value = data.bairro;
+                    document.getElementById('reg-cidade').value = data.localidade || '';
+                    document.getElementById('reg-uf').value = data.uf || '';
                     document.getElementById('reg-numero').focus();
                     atualizarProgressoCadastro();
                 }
@@ -1389,7 +1419,7 @@
     // Lista de pets em TEMPO REAL
     let unsubPets = null, petsProntos = false;
 
-    function renderPetsHome() {
+    function renderPetsHomeOld() {
         if (!petsProntos) return;
         $('lista-pets').innerHTML = pets.size === 0
             ? '<p class="text-center" style="color:var(--text-muted);">Nenhum pet para adoção ainda. Toque no + para publicar o primeiro!</p>'
@@ -1525,6 +1555,8 @@
     let listaChats = [];
     let unsubChats = null;
     let unsubMsgs = null;
+    let notifs = [], unsubNotifs = null;
+    const notifsApagando = new Set();
     let conversaAtual = null;   // { id, outroUid, outroNome }
 
     const chatIdDe = (a, b) => [a, b].sort().join('_');
@@ -1545,13 +1577,105 @@
     }
 
     function atualizarBadgeChat() {
-        const uid = auth.currentUser?.uid;
-        const n = listaChats.filter(c => naoLida(c, uid)).length;
+        const nMsg = notifs.filter(n => n.tipo === 'mensagem' && !n.lida).length;
+        const nTotal = notifs.filter(n => !n.lida).length;
+        const fmt = (n) => n > 99 ? '99+' : String(n);
         const b = $('nav-chat-badge');
-        b.textContent = n > 9 ? '9+' : n;
-        b.classList.toggle('hidden', n === 0);
-        $('notif-badge').classList.toggle('hidden', n === 0);   // bolinha do sino
+        b.textContent = fmt(nMsg);
+        b.classList.toggle('hidden', nMsg === 0);
+        const nb = $('notif-badge');
+        nb.textContent = fmt(nTotal);
+        nb.classList.toggle('hidden', nTotal === 0);
     }
+
+    // ---------- NOTIFICAÇÕES (mensagens recebidas e ajuda em campanhas) ----------
+    function iniciarListenerNotifs(user) {
+        if (unsubNotifs) unsubNotifs();
+        unsubNotifs = onSnapshot(
+            query(collection(db, "notificacoes"), where("para", "==", user.uid)),
+            (snap) => {
+                notifs = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+                atualizarBadgeChat();
+                if (conversaAtual && !$('app-chat-room').classList.contains('hidden')) limparNotifsMsg(conversaAtual.id);
+                if (!$('app-notificacoes').classList.contains('hidden')) renderNotificacoes();
+            },
+            (e) => console.warn("Notificações indisponíveis (publique as regras novas do Firestore):", e)
+        );
+    }
+
+    // notificações de mensagem somem quando você abre a conversa
+    async function limparNotifsMsg(chatId) {
+        const alvo = notifs.filter(n => n.tipo === 'mensagem' && n.chatId === chatId && !notifsApagando.has(n.id));
+        if (!alvo.length) return;
+        alvo.forEach(n => notifsApagando.add(n.id));
+        try {
+            const bt = writeBatch(db);
+            alvo.forEach(n => bt.delete(doc(db, "notificacoes", n.id)));
+            await bt.commit();
+        } catch (e) { console.warn(e); alvo.forEach(n => notifsApagando.delete(n.id)); }
+    }
+
+    function renderNotificacoes() {
+        const box = $('notif-lista');
+        const grupos = new Map(), itens = [];
+        notifs.forEach(n => {
+            if (n.tipo === 'mensagem') {
+                if (n.lida) return;
+                const g = grupos.get(n.chatId) || { tipo: 'mensagem', chatId: n.chatId, qtd: 0, de: n.deNome || 'Usuário', t: 0, texto: '', lida: false };
+                g.qtd++;
+                const t = tempoMs(n);
+                if (t >= g.t) { g.t = t; g.texto = n.texto; }
+                grupos.set(n.chatId, g);
+            } else {
+                itens.push({ tipo: 'doacao', id: n.id, de: n.deNome || 'Alguém', texto: n.texto, t: tempoMs(n), lida: !!n.lida });
+            }
+        });
+        itens.push(...grupos.values());
+        itens.sort((x, y) => y.t - x.t);
+        $('notif-marcar').classList.toggle('hidden', !notifs.some(n => !n.lida));
+        if (!itens.length) { box.innerHTML = '<p class="text-center" style="color:var(--text-muted); margin-top:40px;">Você não tem notificações.</p>'; return; }
+        box.innerHTML = itens.map(i => {
+            const quando = tempoAtras(new Date(i.t));
+            const ini = escapeHtml((i.de || '?').charAt(0).toUpperCase());
+            if (i.tipo === 'mensagem') {
+                const titulo = i.qtd === 1 ? 'Nova mensagem' : i.qtd + ' novas mensagens';
+                return `<div class="chat-list-item clickable unread" onclick="abrirNotifMsg('${escapeHtml(i.chatId)}')">
+                    <div class="chat-avatar">${ini}</div>
+                    <div class="chat-list-main"><div class="chat-list-top"><span class="chat-list-name">${titulo} de ${escapeHtml(i.de)}</span><span class="chat-list-time">${quando}</span></div>
+                    <div class="chat-list-last">${escapeHtml(i.texto)}</div></div><span class="unread-dot"></span></div>`;
+            }
+            return `<div class="chat-list-item clickable ${i.lida ? '' : 'unread'}" onclick="abrirNotifDoacao('${escapeHtml(i.id)}')">
+                <div class="chat-avatar" style="background:var(--primary-orange);">${ini}</div>
+                <div class="chat-list-main"><div class="chat-list-top"><span class="chat-list-name">Sua campanha recebeu ajuda</span><span class="chat-list-time">${quando}</span></div>
+                <div class="chat-list-last" style="white-space:normal;">${escapeHtml(i.texto)}</div></div>${i.lida ? '' : '<span class="unread-dot"></span>'}</div>`;
+        }).join('');
+    }
+
+    window.abrirNotificacoes = function () { renderNotificacoes(); navegarApp('app-notificacoes', null); };
+
+    window.abrirNotifMsg = function (chatId) {
+        const n = notifs.find(x => x.tipo === 'mensagem' && x.chatId === chatId);
+        if (n) abrirConversaCom(n.de, n.deNome || 'Usuário', null);
+    };
+
+    window.abrirNotifDoacao = async function (id) {
+        const n = notifs.find(x => x.id === id);
+        if (!n) return;
+        if (!n.lida) { try { await updateDoc(doc(db, "notificacoes", id), { lida: true }); } catch (e) { console.warn(e); } }
+        if (n.campanhaId) window.abrirCampanha(n.campanhaId);
+    };
+
+    window.marcarTodasNotifs = async function () {
+        const nao = notifs.filter(n => !n.lida);
+        if (!nao.length) return;
+        try {
+            const bt = writeBatch(db);
+            nao.forEach(n => n.tipo === 'mensagem'
+                ? bt.delete(doc(db, "notificacoes", n.id))
+                : bt.update(doc(db, "notificacoes", n.id), { lida: true }));
+            await bt.commit();
+        } catch (e) { console.error(e); alert("Não foi possível atualizar: " + e.message); }
+    };
 
     function iniciarListenerChats(user) {
         if (unsubChats) unsubChats();
@@ -1644,7 +1768,7 @@
                 box.innerHTML = snap.docs.map(d => {
                     const m = d.data();
                     const t = m.criadoEm?.toDate ? hora(m.criadoEm.toDate()) : '';
-                    return `<div class="bubble ${m.uid === uid ? 'me' : 'them'}">${escapeHtml(m.texto)}<small>${t}</small></div>`;
+                    return `<div class="bubble ${m.uid === uid ? 'me' : 'them'}">${m.imagem ? `<img class="chat-img" src="${escapeHtml(m.imagem)}" alt="Foto">` : ''}${m.texto ? escapeHtml(m.texto) : ''}<small>${t}</small></div>`;
                 }).join('');
                 box.scrollTop = box.scrollHeight;
                 marcarComoLida();
@@ -1662,6 +1786,7 @@
 
     async function marcarComoLida() {
         if (!conversaAtual || !auth.currentUser) return;
+        limparNotifsMsg(conversaAtual.id);
         try {
             const batch = writeBatch(db);
             batch.update(doc(db, "chats", conversaAtual.id), { [`lidoEm.${auth.currentUser.uid}`]: serverTimestamp() });
@@ -1675,18 +1800,26 @@
         navegarApp('app-chats', $('nav-chat'));
     };
 
-    async function enviarMensagem() {
+    async function enviarMensagem(imagem) {
         const user = auth.currentUser;
         const input = $('chat-input');
         const texto = input.value.trim();
-        if (!user || !conversaAtual || !texto) return;
+        if (!user || !conversaAtual || (!texto && !imagem)) return;
         input.value = '';
         try {
             const batch = writeBatch(db);
             const msgRef = doc(collection(db, "chats", conversaAtual.id, "mensagens"));
-            batch.set(msgRef, { uid: user.uid, texto, criadoEm: serverTimestamp() });
+            const dado = { uid: user.uid, texto, criadoEm: serverTimestamp() };
+            if (imagem) dado.imagem = imagem;
+            batch.set(msgRef, dado);
+            batch.set(doc(collection(db, "notificacoes")), {
+                para: conversaAtual.outroUid, de: user.uid, deNome: meuNome(),
+                tipo: 'mensagem', chatId: conversaAtual.id,
+                texto: texto ? texto.slice(0, 100) : 'Enviou uma foto',
+                lida: false, criadoEm: serverTimestamp()
+            });
             batch.update(doc(db, "chats", conversaAtual.id), {
-                ultimaMensagem: texto.slice(0, 80),
+                ultimaMensagem: texto ? texto.slice(0, 80) : '📷 Foto',
                 ultimaEm: serverTimestamp(),
                 ultimoUid: user.uid,
                 [`lidoEm.${user.uid}`]: serverTimestamp()
@@ -1698,8 +1831,21 @@
             alert("Não foi possível enviar a mensagem: " + e.message);
         }
     }
-    $('chat-enviar').addEventListener('click', enviarMensagem);
+    $('chat-enviar').addEventListener('click', () => enviarMensagem());
     $('chat-input').addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); enviarMensagem(); } });
+    $('chat-anexar').addEventListener('click', () => $('chat-arquivo').click());
+    $('chat-arquivo').addEventListener('change', async (e) => {
+        const arq = e.target.files[0];
+        e.target.value = '';
+        if (!arq || !conversaAtual) return;
+        if (!arq.type.startsWith('image/')) { alert("Escolha uma imagem."); return; }
+        try {
+            const bruto = await new Promise((ok, er) => { const fr = new FileReader(); fr.onload = () => ok(fr.result); fr.onerror = er; fr.readAsDataURL(arq); });
+            const img = await comprimirImagem(bruto, 900, 0.65);
+            if (img.length > 600000) { alert("Imagem muito grande. Tente outra."); return; }
+            await enviarMensagem(img);
+        } catch (err) { console.error(err); alert("Não foi possível enviar a foto."); }
+    });
 
     // ============================================================
     // CAMPANHAS
@@ -1723,7 +1869,7 @@
     // Lista de campanhas em TEMPO REAL
     let unsubCamps = null, campsProntas = false;
 
-    function renderCampanhasHome() {
+    function renderCampanhasHomeOld() {
         if (!campsProntas) return;
         $('conteudo-campanhas').innerHTML = campanhas.size === 0
             ? '<p class="text-center" style="color:var(--text-muted);">Nenhuma campanha ainda. Seja o primeiro a criar!</p>'
@@ -1983,6 +2129,17 @@
                 });
             } catch (e) { console.warn("Histórico não salvo:", e); }
 
+            if (atualizada.criadoPor && atualizada.criadoPor !== user.uid) {
+                try {
+                    await addDoc(collection(db, "notificacoes"), {
+                        para: atualizada.criadoPor, de: user.uid, deNome: meuNome(), tipo: 'doacao',
+                        campanhaId: pendente.campId,
+                        texto: `${meuNome()} ajudou "${pendente.campTitulo}" com ${pendente.itens.map(i => i.qtd + 'x ' + i.nome).join(', ')}.`.slice(0, 200),
+                        lida: false, criadoEm: serverTimestamp()
+                    });
+                } catch (e) { console.warn("Notificação não enviada:", e); }
+            }
+
             mostrarSucesso(atualizada);
             try { localStorage.removeItem(CHAVE_PENDENTE); } catch (e) {}
             pendente = null;
@@ -2068,7 +2225,7 @@
         if (!user) return;
         uid = uid || user.uid;
         const atual = [...document.querySelectorAll('.logged-screen')].find(el => !el.classList.contains('hidden'));
-        if (atual && atual.id !== 'app-perfil') perfilVoltarPara = atual.id;
+        if (atual && atual.id !== 'app-perfil' && atual.id !== 'app-settings') perfilVoltarPara = atual.id;
 
         const proprio = uid === user.uid;
         perfilAlvo = { uid, proprio, nome: proprio ? meuNome() : (nome || nomesPerfil.get(uid) || 'Usuário') };
@@ -2082,6 +2239,7 @@
 
         $('pf-titulo-tela').textContent = proprio ? 'Meu perfil' : 'Perfil';
         $('pf-btn-foto').classList.toggle('hidden', !proprio);
+        $('pf-btn-config').style.visibility = proprio ? 'visible' : 'hidden';
         $('pf-avaliar').classList.toggle('hidden', proprio);
         $('pf-sec-historico').classList.toggle('hidden', !proprio);
         $('pf-adm-box').classList.toggle('hidden', !(ehAdmin() && !proprio));
@@ -2444,7 +2602,7 @@
                     const t = d.criadoEm?.toDate ? d.criadoEm.toDate() : new Date();
                     return t.getMonth() === agora.getMonth() && t.getFullYear() === agora.getFullYear();
                 }).length;
-                if (el) el.textContent = n === 0 ? 'Que tal ajudar um animal hoje? 🐾'
+                if (el) el.textContent = n === 0 ? 'Que tal ajudar um animal hoje?'
                     : n === 1 ? 'Você já apoiou 1 campanha este mês 😊'
                     : `Você já apoiou ${n} campanhas este mês 😊`;
 
@@ -2454,13 +2612,14 @@
                     setDoc(doc(db, "perfis", user.uid), { ajudouCampanhas: distintas }, { merge: true }).catch(() => {});
                 }
             },
-            (e) => { console.warn("Resumo do mês indisponível:", e); if (el) el.textContent = 'Bem-vindo(a) ao Helpet! 🐾'; }
+            (e) => { console.warn("Resumo do mês indisponível:", e); if (el) el.textContent = 'Bem-vindo(a) ao Helpet!'; }
         );
     }
 
     function pararListeners() {
-        [unsubPets, unsubCamps, unsubResumo, unsubChats, unsubBB].forEach(u => { try { if (u) u(); } catch (e) {} });
-        unsubPets = unsubCamps = unsubResumo = unsubChats = unsubBB = null;
+        [unsubPets, unsubCamps, unsubResumo, unsubChats, unsubBB, unsubNotifs].forEach(u => { try { if (u) u(); } catch (e) {} });
+        unsubPets = unsubCamps = unsubResumo = unsubChats = unsubBB = unsubNotifs = null;
+        notifs = [];
         petsProntos = campsProntas = false;
         window.fecharListenerConversa();
         window.fecharListenersPerfil();
@@ -2495,6 +2654,8 @@
         atualizarSaudacao();
         iniciarListenerResumo(user);
         iniciarListenerChats(user);
+        iniciarListenerNotifs(user);
+        prepararLocalPadrao();
         iniciarListenerBebedouros();
 
         // Recarregou a página? Volta para a tela em que você estava
@@ -2690,6 +2851,71 @@
         }
     };
 
+        // ---------- BUSCA ----------
+    let termoBusca = '';
+    const norm = (s) => String(s ?? '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
+    function renderPetsHome() {
+        if (!petsProntos) return;
+        const lista = [...pets].filter(([, p]) => !termoBusca || norm([p.nome, p.local, p.descricao, p.donoNome, p.sexo, p.porte].join(' ')).includes(termoBusca));
+        $('lista-pets').innerHTML = pets.size === 0
+            ? '<p class="text-center" style="color:var(--text-muted);">Nenhum pet para adoção ainda. Toque no + para publicar o primeiro!</p>'
+            : lista.length === 0 ? '<p class="text-center" style="color:var(--text-muted);">Nenhum pet encontrado.</p>'
+            : lista.map(([id, p]) => renderizarPet(id, p)).join('');
+    }
+    function renderCampanhasHome() {
+        if (!campsProntas) return;
+        const lista = [...campanhas].filter(([, c]) => !termoBusca || norm([c.titulo, c.descricao, c.donoNome, ...(c.itens || []).map(i => i.nome)].join(' ')).includes(termoBusca));
+        $('conteudo-campanhas').innerHTML = campanhas.size === 0
+            ? '<p class="text-center" style="color:var(--text-muted);">Nenhuma campanha ainda. Seja o primeiro a criar!</p>'
+            : lista.length === 0 ? '<p class="text-center" style="color:var(--text-muted);">Nenhuma campanha encontrada.</p>'
+            : lista.map(([id, c]) => renderizarCampanha(id, c)).join('');
+    }
+    let perfisCache = null, perfisCarregando = null;
+    async function renderBuscaPessoas() {
+        const box = $('busca-pessoas');
+        if (termoBusca.length < 2) { box.classList.add('hidden'); box.innerHTML = ''; return; }
+        if (!perfisCache) {
+            perfisCarregando ||= getDocs(collection(db, "perfis"))
+                .then(sn => { perfisCache = sn.docs.map(d => ({ uid: d.id, ...d.data() })); setTimeout(() => { perfisCache = null; }, 60000); })
+                .catch(e => { console.warn("Busca de pessoas:", e); perfisCache = []; })
+                .finally(() => { perfisCarregando = null; });
+            await perfisCarregando;
+        }
+        if (termoBusca.length < 2 || !perfisCache) return;
+        const achados = perfisCache.filter(p => p.nome && norm(p.nome).includes(termoBusca)).slice(0, 8);
+        box.classList.toggle('hidden', achados.length === 0);
+        box.innerHTML = achados.length ? `
+            <h3 class="section-title" style="margin-top:0;">Pessoas</h3>
+            <div class="list-box" style="margin-bottom:20px;">
+                ${achados.map(p => `
+                <div class="chat-list-item clickable" onclick="abrirPerfil('${p.uid}')">
+                    <img src="${escapeHtml(p.foto || avatarPadrao(p.nome))}" alt="" style="width:44px;height:44px;border-radius:50%;object-fit:cover;">
+                    <div class="chat-list-main"><span class="chat-list-name">${escapeHtml(p.nome)}</span></div>
+                </div>`).join('')}
+            </div>` : '';
+    }
+    $('busca-global').addEventListener('input', (e) => {
+        termoBusca = norm(e.target.value.trim());
+        document.querySelector('.welcome-card').classList.toggle('hidden', termoBusca.length > 0);
+        renderPetsHome(); renderCampanhasHome(); renderBuscaPessoas();
+    });
+
+    // ---------- LOCAL PADRÃO DO PET (vem do cadastro) ----------
+    async function prepararLocalPadrao() {
+        const e = dadosUsuario.endereco || {};
+        let { cidade, uf } = e;
+        if (!cidade && e.cep) {
+            try {
+                const r = await fetch(`https://viacep.com.br/ws/${String(e.cep).replace(/\D/g, '')}/json/`);
+                const d = await r.json();
+                if (!d.erro) { cidade = d.localidade; uf = d.uf; }
+            } catch (err) {}
+        }
+        const local = [e.bairro, cidade ? (uf ? `${cidade} - ${uf}` : cidade) : ''].filter(Boolean).join(', ');
+        const inp = $('input-pet-local');
+        if (inp && local && !inp.value) inp.value = local;
+    }
+
     // ---------- LOGIN / CADASTRO ----------
     onAuthStateChanged(auth, (user) => {
         if (user) {
@@ -2733,11 +2959,13 @@
                 await setDoc(doc(db, "usuarios", cred.user.uid), {
                     nome: nome,
                     email: email,
-                    endereco: { cep: cep, rua: rua, numero: numero, bairro: bairro, complemento: complemento },
+                    endereco: { cep: cep, rua: rua, numero: numero, bairro: bairro, complemento: complemento, cidade: document.getElementById('reg-cidade').value, uf: document.getElementById('reg-uf').value },
                     criadoEm: serverTimestamp()
                 });
                 try { await setDoc(doc(db, "perfis", cred.user.uid), { nome: nome, foto: '' }, { merge: true }); } catch (e) { console.warn(e); }
                 nomeUsuario = nome;
+                dadosUsuario = { nome, email, endereco: { cep, rua, numero, bairro, complemento, cidade: document.getElementById('reg-cidade').value, uf: document.getElementById('reg-uf').value } };
+                prepararLocalPadrao();
                 atualizarSaudacao();
                 alert("Cadastro realizado com sucesso!");
             } catch (error) {
